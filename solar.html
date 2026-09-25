@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SunPro Solar | Installation & Cleaning</title>
+<meta name="description" content="Professional solar panel installation, inspection and cleaning services for homes and businesses.">
+<link rel="stylesheet" href="/styles.css">
+
+</head>
+<body>
+<div class="topbar"><div class="container"><span>☀ Professional Solar Services</span><span>Mon–Sat • 8:00 AM–6:00 PM</span></div></div>
+
+<header>
+<nav class="nav container">
+  <a class="logo" href="#"><span class="logo-mark">☀</span> SunPro Solar</a>
+  <div class="nav-links">
+    <a href="#home">Home</a><a href="#services">Services</a><a href="#process">Process</a><a href="#cleaning">Cleaning</a><a href="#plans">Plans</a><a href="#contact">Contact</a>
+  </div>
+  <div class="nav-actions" id="navActions">
+    <a class="btn btn-outline" href="/customer/login">Customer Login</a>
+    <a class="btn btn-primary" href="/customer/signup">Customer Sign Up</a>
+    <a class="btn btn-primary" href="#contact" onclick="openModal(event)">Get a Free Quote</a>
+  </div>
+  <button class="menu" onclick="toggleMenu()" aria-label="Menu">☰</button>
+</nav>
+</header>
+
+<main id="home">
+<section class="hero">
+<div class="container hero-grid">
+ <div>
+  <span class="eyebrow">● Clean energy. Clean panels. Better performance.</span>
+  <h1>Power your home with the sun.</h1>
+  <p>From rooftop solar installation to professional panel cleaning, we help homes and businesses get more from every ray of sunshine.</p>
+  <div class="actions"><a class="btn booking-btn" href="#contact" onclick="openBooking(event, 'installation')">Book Installation →</a><a class="btn btn-outline" href="#process">See Our Process</a></div>
+  <div class="hero-quick" id="heroQuickActions">
+    <a class="btn btn-primary" href="/customer/login">Customer Login</a>
+    <a class="btn btn-outline" href="/customer/signup">Customer Sign Up</a>
+  </div>
+  <div class="trust"><div><strong>10+</strong> Years experience</div><div><strong>500+</strong> Systems serviced</div><div><strong>4.9/5</strong> Customer rating</div></div>
+ </div>
+ <div class="solar-card" aria-label="Solar panel illustration">
+  <span class="badge">SOLAR READY</span><div class="sun"></div><div class="roof"></div><div class="panel"></div>
+  <div class="float-note">⚡ Lower bills • Higher efficiency</div>
+ </div>
+</div>
+</section>
+
+<section id="services">
+<div class="container">
+ <div class="section-head"><span class="eyebrow">WHAT WE DO</span><h2>Complete solar care, from roof to routine maintenance.</h2><p>One team for installation, inspection, cleaning and ongoing support.</p></div>
+ <div class="cards">
+  <article class="card"><div class="icon">🔆</div><h3>Solar Installation</h3><p>Site assessment, system design, panel mounting, inverter setup and final testing by trained technicians.</p></article>
+  <article class="card"><div class="icon">🧼</div><h3>Panel Cleaning</h3><p>Gentle, low-residue cleaning that removes dust, bird droppings and grime without damaging the panels.</p></article>
+  <article class="card"><div class="icon">🔧</div><h3>Inspection & Maintenance</h3><p>Visual checks, wiring inspection, performance review and maintenance recommendations to keep your system running smoothly.</p></article>
+ </div>
+</div>
+</section>
+
+<section id="process" class="steps">
+<div class="container">
+ <div class="section-head"><span class="eyebrow">INSTALLATION PROCESS</span><h2>Simple, transparent, professional.</h2><p>We keep you informed at every stage of your solar journey.</p></div>
+ <div class="step-grid">
+  <div class="step"><div class="num">1</div><h3>Site Survey</h3><p>We check roof condition, shade, orientation, available space and your electricity needs.</p></div>
+  <div class="step"><div class="num">2</div><h3>System Design</h3><p>We recommend a system size and layout designed around your property and energy goals.</p></div>
+  <div class="step"><div class="num">3</div><h3>Installation</h3><p>Panels, mounting structure, inverter and wiring are installed and tested carefully.</p></div>
+  <div class="step"><div class="num">4</div><h3>Handover</h3><p>We complete final checks, explain the system and provide maintenance guidance.</p></div>
+ </div>
+</div>
+</section>
+
+<section id="cleaning" class="cleaning">
+<div class="container clean-grid">
+ <div>
+  <span class="eyebrow">PANEL CLEANING</span>
+  <h2>Dust is small. Its impact can add up.</h2>
+  <p style="color:#b9c9d7">Regular cleaning helps keep your solar panels exposed to sunlight and makes it easier to spot visible issues early.</p>
+  <div class="clean-list">
+   <div class="clean-item"><span class="check">✓</span><div><strong>Safe cleaning method</strong><br><span style="color:#aebfcd;font-size:13px">Soft tools and clean water where appropriate.</span></div></div>
+   <div class="clean-item"><span class="check">✓</span><div><strong>Visual inspection</strong><br><span style="color:#aebfcd;font-size:13px">We look for cracks, loose components and obvious debris.</span></div></div>
+   <div class="clean-item"><span class="check">✓</span><div><strong>Performance-minded service</strong><br><span style="color:#aebfcd;font-size:13px">Service timing can be planned around local dust and weather conditions.</span></div></div>
+  </div>
+ </div>
+ <div class="clean-visual"><div class="mini-panel"></div></div>
+</div>
+</section>
+
+<section id="plans" class="pricing">
+<div class="container">
+ <div class="section-head"><span class="eyebrow">SERVICE PLANS</span><h2>Choose the level of care you need.</h2><p>Starting prices shown for demonstration. Final pricing depends on system size, roof access and site conditions.</p></div>
+ <div class="price-grid">
+  <div class="price"><h3>Basic Clean</h3><div class="amount">From ₹1,499</div><small>For residential systems</small><ul><li>Panel surface cleaning</li><li>Visual condition check</li><li>Service summary</li></ul><a class="btn booking-btn" href="#contact" onclick="openBooking(event, 'cleaning')">Book Cleaning</a></div>
+  <div class="price featured"><h3>Clean + Inspect</h3><div class="amount">From ₹2,499</div><small>Popular maintenance visit</small><ul><li>Deep panel cleaning</li><li>Basic electrical/visual inspection</li><li>Performance observations</li></ul><a class="btn booking-btn" href="#contact" onclick="openBooking(event, 'cleaning')">Book Cleaning</a></div>
+  <div class="price"><h3>Solar Installation</h3><div class="amount">Custom Quote</div><small>Designed for your property</small><ul><li>Site survey</li><li>System design</li><li>Professional installation</li></ul><a class="btn booking-btn" href="#contact" onclick="openBooking(event, 'installation')">Book Installation</a></div>
+ </div>
+</div>
+</section>
+
+<section class="cta" id="contact">
+<div class="container">
+ <div class="cta-box">
+   <div>
+     <span class="eyebrow" style="background:rgba(255,255,255,.12);color:#ffe28a">SOLAR BOOKING</span>
+     <h2>Book your solar installation or cleaning.</h2>
+     <p>Choose a service, tell us your location and preferred date, and our team can contact you to confirm the appointment.</p>
+     <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:18px;font-size:14px">
+       <span>📞 <strong>+91 8074695714</strong></span>
+       <span>✉️ <strong>sunprosolar26@gmail.com</strong></span>
+       <span>📍 <strong>Andhra Pradesh, India</strong></span>
+     </div>
+   </div>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-yellow" onclick="openBooking(event, 'installation')">Book Installation</button><button class="btn btn-outline" onclick="openBooking(event, 'cleaning')">Book Cleaning</button></div>
+ </div>
+</div>
+</section>
+</main>
+
+<footer>
+<div class="container">
+ <div class="footer-grid">
+  <div><a class="logo" href="#" style="color:white"><span class="logo-mark">☀</span> SunPro Solar</a><p style="margin-top:13px;max-width:350px">Solar installation, cleaning and maintenance for homes and businesses.</p></div>
+  <div><h3>Quick Links</h3><a href="#services">Services</a><a href="#process">Installation Process</a><a href="#cleaning">Cleaning</a><a href="/customer/login">Customer Login</a><a href="/customer/signup">Customer Sign Up</a></div>
+  <div><h3>Contact</h3><a href="tel:+918074695714">+91 8074695714</a><a href="mailto:sunprosolar26@gmail.com">sunprosolar26@gmail.com</a><span>Andhra Pradesh, India</span><button class="btn booking-btn" style="margin-top:12px" onclick="openBooking(event, 'installation')">Book a Service</button></div>
+ </div>
+ <div class="copy">© 2026 SunPro Solar. Replace the contact details, prices and service claims with your actual business information.</div>
+</div>
+</footer>
+
+<div class="modal" id="quoteModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+ <div class="modal-box">
+  <button class="close" onclick="closeModal()" aria-label="Close">×</button>
+  <h2 id="modalTitle" style="font-size:28px">Book a Solar Service</h2>
+  <p style="color:#64748b;font-size:14px">Share a few details and we'll get back to you.</p>
+  <form id="quoteForm" method="POST" action="/api/booking">
+   <div class="form-grid">
+     <input name="name" required placeholder="Your name">
+     <input name="phone" required type="tel" placeholder="Phone number">
+   </div>
+
+   <div class="form-grid">
+     <select id="serviceType" name="serviceType" required><option value="">Select a service</option><option value="installation">Solar panel installation</option><option value="cleaning">Solar panel cleaning</option><option value="maintenance">Inspection & maintenance</option><option value="package">Installation + cleaning package</option></select>
+     <input name="city" required placeholder="City / area">
+   </div>
+
+   <div class="form-grid">
+     <input name="date" required type="date" aria-label="Preferred date">
+     <select name="time" required><option value="">Preferred time</option><option>8:00 AM – 10:00 AM</option><option>10:00 AM – 12:00 PM</option><option>12:00 PM – 3:00 PM</option><option>3:00 PM – 6:00 PM</option></select>
+   </div>
+
+   <textarea class="full-span" name="message" placeholder="Tell us about your roof, solar system, or cleaning requirement"></textarea>
+   <div class="notice" id="notice">Your enquiry will be sent to our team. Please submit your booking request.</div>
+   <button class="btn btn-primary" type="submit">Submit Enquiry</button>
+  </form>
+ </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+function openModal(e){if(e)e.preventDefault();document.getElementById('quoteModal').classList.add('show')}
+function openBooking(e,type){
+  if(e)e.preventDefault();
+  const modal=document.getElementById('quoteModal');
+  const title=document.getElementById('modalTitle');
+  const service=document.getElementById('serviceType');
+  modal.classList.add('show');
+  if(type==='installation'){
+    title.textContent='Book Solar Installation';
+    service.value='installation';
+  } else if(type==='cleaning'){
+    title.textContent='Book Solar Panel Cleaning';
+    service.value='cleaning';
+  } else {
+    title.textContent='Book a Solar Service';
+    service.value='';
+  }
+}
+function closeModal(){document.getElementById('quoteModal').classList.remove('show')}
+function toggleMenu(){
+ const links=document.querySelector('.nav-links');
+ links.style.display=links.style.display==='flex'?'none':'flex';
+ if(links.style.display==='flex'){links.style.position='absolute';links.style.top='74px';links.style.left='0';links.style.right='0';links.style.background='white';links.style.padding='18px 5%';links.style.flexDirection='column';links.style.alignItems='stretch';}
+}
+async function createRazorpayPayment(payload) {
+  const configResponse = await fetch('/api/config/razorpay');
+  const config = await configResponse.json();
+
+  if (!config.success || !config.configured || !config.keyId) {
+    throw new Error('Razorpay is not configured yet. Please add your live Razorpay keys first.');
+  }
+
+  const orderResponse = await fetch('/api/create-payment-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount: Number(payload.paymentAmount || 250),
+      currency: 'INR',
+      receipt: `solar-${Date.now()}`
+    })
+  });
+
+  const orderData = await orderResponse.json();
+  if (!orderResponse.ok || !orderData.success) {
+    throw new Error(orderData.message || 'Unable to create the payment order.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const razorpay = new Razorpay({
+      key: config.keyId,
+      amount: orderData.order.amount,
+      currency: orderData.order.currency,
+      name: 'SunPro Solar',
+      description: 'Advance payment for solar service booking',
+      order_id: orderData.order.id,
+      prefill: {
+        name: payload.name,
+        email: payload.email,
+        contact: payload.phone
+      },
+      theme: { color: '#f59e0b' },
+      handler: async function (response) {
+        try {
+          const verifyResponse = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+
+          const verifyData = await verifyResponse.json();
+          if (!verifyResponse.ok || !verifyData.success) {
+            throw new Error(verifyData.message || 'Payment verification failed.');
+          }
+
+          resolve({
+            paymentStatus: 'paid',
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          });
+        } catch (error) {
+          reject(error);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          reject(new Error('Payment popup closed before completing the transaction.'));
+        }
+      }
+    });
+
+    razorpay.open();
+  });
+}
+async function updateSessionUI() {
+  try {
+    const response = await fetch('/api/session');
+    const result = await response.json();
+    if (!result.success || !result.authenticated || result.user?.role !== 'customer') {
+      return;
+    }
+
+    const navActions = document.getElementById('navActions');
+    const heroQuickActions = document.getElementById('heroQuickActions');
+
+    if (navActions) {
+      navActions.innerHTML = `
+        <a class="btn btn-outline" href="/account">Account</a>
+        <a class="btn btn-primary" href="/logout">Logout</a>
+        <a class="btn btn-primary" href="#contact" onclick="openModal(event)">Get a Free Quote</a>
+      `;
+    }
+
+    if (heroQuickActions) {
+      heroQuickActions.innerHTML = `
+        <a class="btn btn-primary" href="/account">My Account</a>
+        <a class="btn btn-outline" href="/logout">Logout</a>
+      `;
+    }
+  } catch (error) {
+    console.log('Session check failed', error);
+  }
+}
+
+document.getElementById('quoteModal').addEventListener('click',e=>{if(e.target.id==='quoteModal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+updateSessionUI();
+async function parseApiResponse(response) {
+  const text = await response.text();
+  if (!text) {
+    return { success: response.ok, message: response.ok ? 'Request completed.' : 'Request failed.' };
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return { success: false, message: 'Server returned an invalid JSON response.' };
+    }
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return { success: false, message: text || 'Request failed.' };
+  }
+}
+
+document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const form = e.currentTarget;
+  const notice = document.getElementById('notice');
+  const payload = Object.fromEntries(new FormData(form).entries());
+  notice.style.display = 'block';
+  notice.style.background = '#e8f7ef';
+  notice.style.color = '#176b46';
+  notice.textContent = 'Sending your booking request...';
+
+  try {
+    let finalPayload = { ...payload, paymentMethod: 'Card', paymentAmount: 250, paymentStatus: 'pending' };
+
+    const response = await fetch('/api/booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(finalPayload)
+    });
+
+    const data = await parseApiResponse(response);
+
+    if (!response.ok || data.success === false) {
+      throw new Error(data.message || 'Unable to send your request right now.');
+    }
+
+    notice.textContent = data.message || 'Booking request received! Our team will contact you soon.';
+    form.reset();
+    setTimeout(closeModal, 1600);
+  } catch (error) {
+    notice.style.background = '#fff3f2';
+    notice.style.color = '#8a2a2a';
+    notice.textContent = error.message || 'Something went wrong. Please try again or call us directly.';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SunPro Solar | Customer Login</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #eef9ff, #f9fbff);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      color: #0b1f33;
+      font-size: 18px;
+    }
+    .login-box {
+      width: min(420px, 92%);
+      background: white;
+      border: 1px solid #e6edf2;
+      padding: 30px 24px;
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(11,31,51,.08);
+    }
+    h2 { margin: 0 0 8px; }
+    p { color: #64748b; margin: 0 0 20px; }
+    form { display: grid; gap: 14px; }
+    input {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid #d5e0e7;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+    button {
+      border: none;
+      background: #0d5c8f;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .message {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 9px;
+      font-size: 14px;
+    }
+    .error { background: #fff1f1; color: #7a1f1f; }
+    .success { background: #ebfbf3; color: #0d5b3a; }
+    .link-row { margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; }
+    a { color: #0d5c8f; text-decoration: none; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Customer Login</h2>
+    <p>Sign in to continue with your solar service request.</p>
+    <form id="loginForm">
+      <input name="username" type="text" placeholder="Username" required />
+      <input name="password" type="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
+    <div class="link-row">
+      <a href="/customer/signup">Create account</a>
+      <a href="/admin/login">Admin login</a>
+    </div>
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const message = document.getElementById('message');
+
+    async function redirectIfLoggedIn() {
+      try {
+        const response = await fetch('/api/session');
+        const result = await response.json();
+        if (result && result.authenticated && result.user && result.user.role === 'customer') {
+          window.location.href = '/account';
+        }
+      } catch (error) {
+        console.log('Session check failed', error);
+      }
+    }
+
+    redirectIfLoggedIn();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = Object.fromEntries(new FormData(form).entries());
+
+      try {
+        const response = await fetch('/api/customer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Login failed');
+
+        message.className = 'message success';
+        message.textContent = 'Login successful. Redirecting...';
+        message.style.display = 'block';
+        window.location.href = result.redirectTo || '/';
+      } catch (error) {
+        message.className = 'message error';
+        message.textContent = error.message;
+        message.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

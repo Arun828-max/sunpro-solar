@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SunPro Solar | My Account</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #eef9ff, #f9fbff);
+      color: #0b1f33;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e6edf2;
+      border-radius: 22px;
+      box-shadow: 0 18px 45px rgba(11,31,51,.08);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      min-height: 620px;
+    }
+    .profile-sidebar {
+      background: linear-gradient(180deg, #0b1f33, #123d5d);
+      color: #ffffff;
+      padding: 28px 22px;
+    }
+    .avatar {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.48);
+      display: grid;
+      place-items: center;
+      font-size: 42px;
+      font-weight: bold;
+      margin: 0 auto 18px;
+    }
+    .sidebar-name {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .sidebar-name h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .sidebar-name p {
+      margin: 0;
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+    }
+    .mini-links {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .mini-links a, .mini-links button {
+      width: 100%;
+      text-align: left;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .content {
+      padding: 28px 30px 30px;
+      display: flex;
+      flex-direction: column;
+    }
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .content-header h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+    .details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    .detail {
+      background: #f8fbff;
+      border: 1px solid #e6edf2;
+      border-radius: 14px;
+      padding: 18px 16px;
+    }
+    .label {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .value {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    a, button {
+      display: inline-block;
+      text-decoration: none;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      padding: 12px 16px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .primary { background: #0d5c8f; color: white; }
+    .secondary { background: #eef5fb; color: #0b1f33; }
+    .danger { background: #fff1f1; color: #8a2a2a; }
+    .form-box {
+      display: none;
+      margin-top: 18px;
+      background: #f8fbff;
+      border: 1px solid #e6edf2;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .form-box.visible { display: block; }
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid #d5e0e7;
+      border-radius: 10px;
+      font-size: 15px;
+      background: white;
+    }
+    .full { grid-column: 1 / -1; }
+    .message {
+      display: none;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .success { display: block; background: #ebfbf3; color: #0d5b3a; }
+    .error { display: block; background: #fff1f1; color: #7a1f1f; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="profile-sidebar">
+        <div class="avatar" id="avatarLetter">U</div>
+        <div class="sidebar-name">
+          <h2 id="headerName">My Account</h2>
+          <p>Customer profile</p>
+        </div>
+        <div class="mini-links">
+          <button class="secondary" id="editProfileBtn" type="button">Edit Profile</button>
+          <a href="/">Back to Home</a>
+          <a href="/logout">Logout</a>
+          <button class="danger" id="deleteAccountBtnSidebar" type="button">Delete Account</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="content-header">
+          <h1>Account Details</h1>
+        </div>
+
+        <div class="details">
+          <div class="detail">
+            <span class="label">Full Name</span>
+            <span class="value" id="fullName">Loading...</span>
+          </div>
+          <div class="detail">
+            <span class="label">Username</span>
+            <span class="value" id="username">Loading...</span>
+          </div>
+          <div class="detail">
+            <span class="label">Email</span>
+            <span class="value" id="email">Loading...</span>
+          </div>
+          <div class="detail">
+            <span class="label">Phone</span>
+            <span class="value" id="phone">Loading...</span>
+          </div>
+          <div class="detail">
+            <span class="label">Role</span>
+            <span class="value" id="role">Loading...</span>
+          </div>
+          <div class="detail">
+            <span class="label">Account ID</span>
+            <span class="value" id="id">Loading...</span>
+          </div>
+          <div class="detail">
+            <span class="label">Created</span>
+            <span class="value" id="createdAt">Loading...</span>
+          </div>
+        </div>
+
+        <div id="editFormBox" class="form-box">
+          <form id="editProfileForm">
+            <div>
+              <input id="editFullName" name="fullName" type="text" placeholder="Full name" required />
+            </div>
+            <div>
+              <input id="editUsername" name="username" type="text" placeholder="Username" required />
+            </div>
+            <div>
+              <input id="editEmail" name="email" type="email" placeholder="Email" required />
+            </div>
+            <div>
+              <input id="editPhone" name="phone" type="tel" placeholder="Phone number" required />
+            </div>
+            <div>
+              <input id="editPassword" name="password" type="password" placeholder="New password (optional)" />
+            </div>
+            <div>
+              <input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" />
+            </div>
+            <div class="full">
+              <button class="primary" type="submit">Save Changes</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="deleteAccountBtn" type="button">Delete Account</button>
+        </div>
+
+        <div id="message" class="message"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const message = document.getElementById('message');
+    const editFormBox = document.getElementById('editFormBox');
+    const editProfileBtn = document.getElementById('editProfileBtn');
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = 'message ' + type;
+    }
+
+    function updateHeaderName(username) {
+      const name = username || 'My Account';
+      document.getElementById('headerName').textContent = name;
+      document.getElementById('avatarLetter').textContent = name.charAt(0).toUpperCase();
+    }
+
+    async function loadAccount() {
+      try {
+        const response = await fetch('/api/account');
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Unable to load your account.');
+        }
+
+        const user = result.user || {};
+        document.getElementById('fullName').textContent = user.fullName || 'N/A';
+        document.getElementById('username').textContent = user.username || 'N/A';
+        document.getElementById('email').textContent = user.email || 'N/A';
+        document.getElementById('phone').textContent = user.phone || 'N/A';
+        document.getElementById('role').textContent = user.role || 'customer';
+        document.getElementById('id').textContent = user.id || 'N/A';
+        document.getElementById('createdAt').textContent = user.createdAt || 'N/A';
+        updateHeaderName(user.fullName || user.username || 'My Account');
+        document.getElementById('editFullName').value = user.fullName || user.username || '';
+        document.getElementById('editUsername').value = user.username || '';
+        document.getElementById('editEmail').value = user.email || '';
+        document.getElementById('editPhone').value = user.phone || '';
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    editProfileBtn.addEventListener('click', () => {
+      editFormBox.classList.toggle('visible');
+    });
+
+    document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const form = e.currentTarget;
+      const payload = Object.fromEntries(new FormData(form).entries());
+      const password = String(payload.password || '').trim();
+      const confirmPassword = String(payload.confirmPassword || '').trim();
+
+      if (!payload.fullName || !payload.username || !payload.email || !payload.phone) {
+        showMessage('Full name, username, email, and phone are required.', 'error');
+        return;
+      }
+
+      if (password || confirmPassword) {
+        if (password.length < 4) {
+          showMessage('Password must be at least 4 characters long.', 'error');
+          return;
+        }
+        if (password !== confirmPassword) {
+          showMessage('Passwords do not match.', 'error');
+          return;
+        }
+      }
+
+      try {
+        const response = await fetch('/api/account', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: payload.fullName,
+            username: payload.username,
+            email: payload.email,
+            phone: payload.phone,
+            password: password || '',
+            confirmPassword: confirmPassword || ''
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to update profile.');
+
+        showMessage(result.message || 'Profile updated successfully.', 'success');
+        editFormBox.classList.remove('visible');
+        await loadAccount();
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    });
+
+    async function deleteAccount() {
+      const confirmed = confirm('Are you sure you want to delete your account? This action cannot be undone.');
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch('/api/account', { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Unable to delete account.');
+        }
+
+        alert(result.message || 'Account deleted successfully.');
+        window.location.href = '/customer/login';
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    document.getElementById('deleteAccountBtn').addEventListener('click', deleteAccount);
+    document.getElementById('deleteAccountBtnSidebar').addEventListener('click', deleteAccount);
+
+    loadAccount();
+  </script>
+</body>
+</html>

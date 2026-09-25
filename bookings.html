@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SunPro Solar | Bookings</title>
+  <style>
+    :root {
+      --navy: #0b1f33;
+      --blue: #0d5c8f;
+      --green: #1d8a5a;
+      --line: #e6edf2;
+      --muted: #64748b;
+      --bg: #f7fafc;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--navy);
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 10px; }
+    .topbar {
+      background: var(--navy);
+      color: white;
+      padding: 18px 0;
+    }
+    .topbar .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
+    .actions a {
+      color: white;
+      text-decoration: none;
+      margin-left: 16px;
+      font-weight: bold;
+    }
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 25px rgba(11,31,51,0.04);
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin: 18px 0 8px;
+      font-size: 22px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      background: #edf5fb;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .status {
+      display: inline-block;
+      background: #eafaf1;
+      color: var(--green);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .empty {
+      padding: 30px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+    @media (max-width: 760px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; background: white; }
+      td { border: none; padding: 10px 14px; }
+      td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="container">
+      <strong>SunPro Solar Admin</strong>
+      <div class="actions">
+        <a href="/">Public Website</a>
+        <a href="/bookings">Bookings</a>
+        <a href="/logout">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Booking enquiries</h1>
+
+    <div class="panel">
+      <h2>Sign-up accounts</h2>
+      <div id="usersLoading">Loading users...</div>
+      <table id="usersTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Created At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+      <div id="usersEmpty" class="empty" style="display:none;">No sign-up users yet.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Bookings</h2>
+      <div id="loading">Loading bookings...</div>
+      <table id="bookingsTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>Booking ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Service</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>City</th>
+            <th>Message</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="bookingsBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty" style="display:none;">No bookings yet.</div>
+    </div>
+  </div>
+
+  <script>
+    let lastBookingCount = 0;
+
+    function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        console.log('This browser does not support notifications.');
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        return;
+      }
+
+      Notification.requestPermission().catch(() => {
+        console.log('Notification permission not granted.');
+      });
+    }
+
+    function showBrowserNotification(title, body) {
+      if (!('Notification' in window)) return;
+
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: 'https://cdn-icons-png.flaticon.com/512/3909/3909186.png'
+        });
+      }
+    }
+
+    async function parseJsonResponse(response, fallbackMessage) {
+      const text = await response.text();
+
+      if (!text) {
+        return { success: response.ok, message: fallbackMessage };
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!contentType.includes('application/json')) {
+        return { success: false, message: text || fallbackMessage };
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return { success: false, message: text || fallbackMessage };
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const response = await fetch('/api/users');
+        const result = await parseJsonResponse(response, 'Unable to load users right now.');
+        const tbody = document.getElementById('usersBody');
+        const loading = document.getElementById('usersLoading');
+        const table = document.getElementById('usersTable');
+        const emptyState = document.getElementById('usersEmpty');
+
+        loading.style.display = 'none';
+
+        if (!result.success || !Array.isArray(result.data) || result.data.length === 0) {
+          table.style.display = 'none';
+          emptyState.style.display = 'block';
+          return;
+        }
+
+        tbody.innerHTML = result.data.map(user => `
+          <tr>
+            <td data-label="ID">${user.id}</td>
+            <td data-label="Username">${user.username}</td>
+            <td data-label="Created At">${user.createdAt}</td>
+            <td data-label="Action">
+              <button type="button" data-user-delete-id="${user.id}" style="background:#fff1f1;color:#8a2a2a;border:1px solid #f3cdcd;padding:6px 10px;border-radius:8px;cursor:pointer; font-weight:bold;">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+
+        document.querySelectorAll('[data-user-delete-id]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const id = button.getAttribute('data-user-delete-id');
+            if (!confirm('Delete this sign-up account?')) return;
+
+            try {
+              const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+              const data = await parseJsonResponse(response, 'Unable to delete account.');
+              if (!response.ok || !data.success) throw new Error(data.message || 'Unable to delete account.');
+              alert(data.message || 'Account deleted successfully.');
+              loadUsers();
+            } catch (error) {
+              alert(error.message || 'Unable to delete account.');
+            }
+          });
+        });
+
+        table.style.display = 'table';
+      } catch (error) {
+        document.getElementById('usersLoading').textContent = 'Unable to load users right now.';
+      }
+    }
+
+    async function loadBookings() {
+      try {
+        const response = await fetch('/api/bookings');
+        const result = await parseJsonResponse(response, 'Unable to load bookings right now.');
+
+        const tbody = document.getElementById('bookingsBody');
+        const loading = document.getElementById('loading');
+        const table = document.getElementById('bookingsTable');
+        const emptyState = document.getElementById('emptyState');
+
+        loading.style.display = 'none';
+
+        if (!result.success || !Array.isArray(result.data) || result.data.length === 0) {
+          table.style.display = 'none';
+          emptyState.style.display = 'block';
+          lastBookingCount = 0;
+          return;
+        }
+
+        const currentCount = result.data.length;
+        if (currentCount > lastBookingCount) {
+          const newestBooking = result.data[0];
+          const message = `${newestBooking.name} booked ${newestBooking.serviceType} for ${newestBooking.date}`;
+          showBrowserNotification('New Solar Booking', message);
+        }
+        lastBookingCount = currentCount;
+
+        tbody.innerHTML = result.data.map(booking => `
+          <tr>
+            <td data-label="Booking ID">${booking.bookingId || booking.id || '—'}</td>
+            <td data-label="Name">${booking.name}</td>
+            <td data-label="Phone">
+              <div>${booking.phone}</div>
+              <div style="margin-top:6px;"><a href="tel:${booking.phone}" style="color:#0d5c8f; text-decoration:none; font-weight:bold;">Call</a></div>
+            </td>
+            <td data-label="Service">${booking.serviceType}</td>
+            <td data-label="Date">${booking.date}</td>
+            <td data-label="Time">${booking.time}</td>
+            <td data-label="City">${booking.city}</td>
+            <td data-label="Message">${booking.message || '—'}</td>
+            <td data-label="Status">
+              <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                <span class="status">New</span>
+                <a href="mailto:${booking.email || 'sunprosolar26@gmail.com'}?subject=Solar%20Service%20Reply" style="color:#0d5c8f; font-weight:bold; text-decoration:none;">Email</a>
+                <a href="https://wa.me/${String(booking.phone || '').replace(/\D/g, '')}?text=Hello%20${encodeURIComponent(booking.name || 'Customer')},%20thank%20you%20for%20your%20solar%20enquiry." target="_blank" rel="noopener" style="color:#1d8a5a; font-weight:bold; text-decoration:none;">WhatsApp</a>
+                <button type="button" data-delete-id="${booking.id}" style="background:#fff1f1;color:#8a2a2a;border:1px solid #f3cdcd;padding:6px 10px;border-radius:8px;cursor:pointer; font-weight:bold;">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+
+        document.querySelectorAll('[data-delete-id]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const id = button.getAttribute('data-delete-id');
+            if (!confirm('Delete this enquiry?')) return;
+
+            try {
+              const response = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+              const data = await parseJsonResponse(response, 'Unable to delete enquiry.');
+              if (!response.ok || !data.success) throw new Error(data.message || 'Unable to delete enquiry.');
+              alert(data.message || 'Enquiry deleted successfully.');
+              loadBookings();
+            } catch (error) {
+              alert(error.message || 'Unable to delete enquiry.');
+            }
+          });
+        });
+
+        table.style.display = 'table';
+      } catch (error) {
+        document.getElementById('loading').textContent = 'Unable to load bookings right now.';
+      }
+    }
+
+    loadUsers();
+    loadBookings();
+    requestNotificationPermission();
+
+    setInterval(() => {
+      loadUsers();
+      loadBookings();
+    }, 5000);
+  </script>
+</body>
+</html>

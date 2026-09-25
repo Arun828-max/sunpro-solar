@@ -1,0 +1,20 @@
+{
+  "name": "solar-booking-backend",
+  "version": "1.0.0",
+  "description": "Backend for the SunPro Solar landing page booking form",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.1",
+    "nodemailer": "^6.9.14",
+    "razorpay": "^2.9.8",
+    "sqlite3": "^5.1.7",
+    "twilio": "^5.1.0"
+  }
+}

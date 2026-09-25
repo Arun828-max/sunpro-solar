@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SunPro Solar | Sign Up</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #edf7ff, #f7fafc);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      color: #0b1f33;
+      font-size: 18px;
+    }
+    .signup-box {
+      width: min(420px, 92%);
+      background: white;
+      border: 1px solid #e6edf2;
+      padding: 30px 24px;
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(11,31,51,.08);
+    }
+    h2 { margin: 0 0 8px; }
+    p { color: #64748b; margin: 0 0 20px; }
+    form { display: grid; gap: 14px; }
+    input {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid #d5e0e7;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+    button {
+      border: none;
+      background: #0d5c8f;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .message {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 9px;
+      font-size: 14px;
+    }
+    .error { background: #fff1f1; color: #7a1f1f; }
+    .success { background: #ebfbf3; color: #0d5b3a; }
+  </style>
+</head>
+<body>
+  <div class="signup-box">
+    <h2>Create Admin Account</h2>
+    <p>Sign up to access the booking dashboard.</p>
+    <form id="signupForm">
+      <input name="username" type="text" placeholder="Username" required />
+      <input name="password" type="password" placeholder="Password" required />
+      <input name="confirmPassword" type="password" placeholder="Confirm Password" required />
+      <button type="submit">Sign Up</button>
+    </form>
+    <p style="margin-top:16px; margin-bottom:0; text-align:center;">
+      Already have an account? <a href="/admin/login" style="color:#0d5c8f; font-weight:bold; text-decoration:none;">Sign In</a>
+    </p>
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('signupForm');
+    const message = document.getElementById('message');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      try {
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || 'Sign up failed');
+        }
+
+        message.className = 'message success';
+        message.textContent = 'Account created successfully. Redirecting...';
+        message.style.display = 'block';
+        window.location.href = result.redirectTo || '/bookings';
+      } catch (error) {
+        message.className = 'message error';
+        message.textContent = error.message;
+        message.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

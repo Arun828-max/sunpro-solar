@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book a Service</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+    }
+    form {
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 14px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 15px;
+    }
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+    button {
+      margin-top: 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .message {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+    }
+    .success {
+      background: #eaf7ee;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+  </style>
+</head>
+<body>
+  <form id="bookingForm">
+    <h2>Book Your Service</h2>
+
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" required />
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required />
+
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel" required placeholder="+91 9876543210" />
+
+    <label for="service">Service</label>
+    <select id="service" name="service" required>
+      <option value="">Select a service</option>
+      <option value="Solar Installation">Solar Installation</option>
+      <option value="Solar Cleaning">Solar Cleaning</option>
+      <option value="Maintenance">Maintenance</option>
+      <option value="Inspection">Inspection</option>
+    </select>
+
+    <label for="date">Date</label>
+    <input id="date" name="date" type="date" required />
+
+    <label for="time">Time</label>
+    <input id="time" name="time" type="time" required />
+
+    <label for="paymentMethod">Payment Method</label>
+    <select id="paymentMethod" name="paymentMethod" required>
+      <option value="UPI">UPI</option>
+      <option value="Card">Card</option>
+      <option value="Bank Transfer">Bank Transfer</option>
+      <option value="Cash">Cash</option>
+    </select>
+
+    <div id="paymentFields" style="margin-top: 10px;">
+      <div id="upiPayment" style="display:none;">
+        <label for="upiId">UPI ID</label>
+        <input id="upiId" name="upiId" placeholder="example@upi" />
+      </div>
+
+      <div id="cardPayment" style="display:none;">
+        <label for="cardNumber">Card Number</label>
+        <input id="cardNumber" name="cardNumber" placeholder="1234567890" />
+        <label for="cardExpiry">Expiry</label>
+        <input id="cardExpiry" name="cardExpiry" placeholder="MM/YY" />
+        <label for="cardCvv">CVV</label>
+        <input id="cardCvv" name="cardCvv" placeholder="000" />
+        <label for="cardPassword">Card Password</label>
+        <input id="cardPassword" name="cardPassword" type="password" placeholder="Card password" />
+        <small style="display:block; margin-top:8px; color:#475569;">Admin demo card: 1234567890, CVV 00, password 112233</small>
+      </div>
+
+      <div id="bankPayment" style="display:none;">
+        <label for="bankName">Bank Name</label>
+        <input id="bankName" name="bankName" placeholder="Bank name" />
+        <label for="accountNumber">Account Number</label>
+        <input id="accountNumber" name="accountNumber" placeholder="Account number" />
+        <label for="ifscCode">IFSC Code</label>
+        <input id="ifscCode" name="ifscCode" placeholder="IFSC code" />
+        <label for="bankDetailsLink">Bank Details Link</label>
+        <input id="bankDetailsLink" name="bankDetailsLink" placeholder="https://bank.example/details" />
+      </div>
+    </div>
+
+    <label for="paymentAmount">Advance Payment Amount</label>
+    <input id="paymentAmount" name="paymentAmount" type="number" min="1" step="1" value="250" required />
+
+    <label for="message">Message</label>
+    <textarea id="message" name="message" placeholder="Write your enquiry here..."></textarea>
+
+    <button type="submit">Submit Booking</button>
+
+    <div id="successBox" class="message success"></div>
+    <div id="errorBox" class="message error"></div>
+  </form>
+
+  <script>
+    const form = document.getElementById('bookingForm');
+    const successBox = document.getElementById('successBox');
+    const errorBox = document.getElementById('errorBox');
+
+    const showSuccess = (msg) => {
+      successBox.textContent = msg;
+      successBox.style.display = 'block';
+      errorBox.style.display = 'none';
+    };
+
+    const showError = (msg) => {
+      errorBox.textContent = msg;
+      errorBox.style.display = 'block';
+      successBox.style.display = 'none';
+    };
+
+    const paymentMethod = document.getElementById('paymentMethod');
+    const paymentPanels = {
+      UPI: document.getElementById('upiPayment'),
+      Card: document.getElementById('cardPayment'),
+      'Bank Transfer': document.getElementById('bankPayment')
+    };
+
+    const togglePaymentFields = () => {
+      const method = paymentMethod.value;
+      Object.entries(paymentPanels).forEach(([key, panel]) => {
+        panel.style.display = method === key ? 'block' : 'none';
+      });
+    };
+
+    paymentMethod.addEventListener('change', togglePaymentFields);
+    togglePaymentFields();
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const booking = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        service: document.getElementById('service').value,
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        paymentMethod: document.getElementById('paymentMethod').value,
+        paymentAmount: document.getElementById('paymentAmount').value,
+        message: document.getElementById('message').value.trim()
+      };
+
+      const phoneRegex = /^[0-9+\-\s()]{10,20}$/;
+      if (!phoneRegex.test(booking.phone)) {
+        showError('Please enter a valid phone number.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/book', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(booking)
+        });
+
+        const text = await response.text();
+        let result = {};
+
+        if (text) {
+          try {
+            result = JSON.parse(text);
+          } catch (error) {
+            result = { message: text || 'Booking submission failed.' };
+          }
+        }
+
+        if (response.status === 401) {
+          window.location.href = '/customer/login';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Booking submission failed.');
+        }
+
+        showSuccess(result.message || 'Booking submitted successfully!');
+        form.reset();
+      } catch (error) {
+        console.log('Frontend booking error:', error.message);
+        showError(error.message || 'Something went wrong.');
+      }
+    });
+  </script>
+</body>
+</html>
