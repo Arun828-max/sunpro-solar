@@ -2,7 +2,7 @@ services:
   - type: web
     name: sunpro-solar
     runtime: node
-    buildCommand: npm ci --omit=dev
+    buildCommand: npm_config_build_from_source=sqlite3 npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /health
     envVars:
