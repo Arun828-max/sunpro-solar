@@ -17,6 +17,10 @@
   padding: 0;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -164,6 +168,77 @@ header {
   background: radial-gradient(circle at 85% 15%, rgba(246, 185, 26, 0.22), transparent 30%), linear-gradient(135deg, #eef8fc 0%, #fff 52%, #f6fbf7 100%);
   padding: 82px 0 70px;
   overflow: hidden;
+}
+
+.customer-bookings {
+  padding: 52px 0;
+  background: #f5f9fa;
+  border-bottom: 1px solid var(--line);
+}
+
+.bookings-heading {
+  margin-bottom: 22px;
+}
+
+.booking-list-status {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.booking-list {
+  display: grid;
+  gap: 12px;
+}
+
+.booking-record {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--yellow);
+  padding: 18px 20px;
+}
+
+.booking-record-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.booking-record-heading h3 {
+  font-size: 18px;
+}
+
+.booking-record-heading span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.booking-record-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px 20px;
+  margin-top: 14px;
+}
+
+.booking-record-details dt {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.booking-record-details dd {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.booking-record-message {
+  margin-top: 12px;
+  color: #536579;
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .hero-grid {

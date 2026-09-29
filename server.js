@@ -1,7 +1,7 @@
 require('dotenv').config();
 const crypto = require('crypto');
 const express = require('express');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
@@ -9,13 +9,23 @@ const sqlite3 = require('sqlite3').verbose();
 const nodemailer = require('nodemailer');
 const twilio = require('twilio');
 const Razorpay = require('razorpay');
-const { normalizeBookingPayload, generateBookingId } = require('./controllers/bookingController');
+const {
+  normalizeBookingPayload,
+  generateBookingId,
+  isCustomerBookingAllowed,
+  normalizeWhatsAppNumber,
+  isValidTwilioTemplateSid,
+  createWhatsAppRequest
+} = require('./controllers/bookingController');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const DB_PATH = path.join(__dirname, 'data', 'solar-bookings.db');
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'admin123').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+const SESSION_SECRET = (process.env.SESSION_SECRET || '').trim();
+if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD must be set');
+if (!SESSION_SECRET) throw new Error('SESSION_SECRET must be set');
 const ADMIN_WHATSAPP = (process.env.ADMIN_WHATSAPP || process.env.WHATSAPP_TO || '').trim();
 const razorpay = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
   ? new Razorpay({
@@ -64,10 +74,13 @@ function ensureDefaultUser() {
 }
 
 const isEmailConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-const isWhatsAppConfigured = !!(
+const isWhatsAppSenderConfigured = !!(
   process.env.TWILIO_ACCOUNT_SID &&
   process.env.TWILIO_AUTH_TOKEN &&
-  process.env.TWILIO_WHATSAPP_FROM &&
+  process.env.TWILIO_WHATSAPP_FROM
+);
+const isWhatsAppConfigured = !!(
+  isWhatsAppSenderConfigured &&
   ADMIN_WHATSAPP
 );
 
@@ -77,21 +90,19 @@ function hasValidWhatsAppTemplate() {
 }
 
 app.disable('x-powered-by');
+app.set('trust proxy', 1);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.static(__dirname));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'sunpro-solar-secret',
-  resave: true,
-  saveUninitialized: true,
-  rolling: true,
-  cookie: {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000
-  }
+app.use(cookieSession({
+  name: 'sunpro.session',
+  keys: [SESSION_SECRET],
+  maxAge: 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/'
 }));
 
 app.use((req, res, next) => {
@@ -116,102 +127,144 @@ app.use((req, res, next) => {
   next();
 });
 
-function initDatabase() {
+function initializeDatabase() {
   const dbDir = path.dirname(DB_PATH);
   fs.mkdirSync(dbDir, { recursive: true });
+  const database = new sqlite3.Database(DB_PATH);
 
-  const db = new sqlite3.Database(DB_PATH);
+  return new Promise((resolve) => {
+    database.serialize(() => {
+      database.run(`
+        CREATE TABLE IF NOT EXISTS bookings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          bookingId TEXT UNIQUE,
+          name TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          email TEXT,
+          serviceType TEXT NOT NULL,
+          date TEXT NOT NULL,
+          time TEXT NOT NULL,
+          city TEXT NOT NULL,
+          message TEXT,
+          paymentMethod TEXT DEFAULT 'UPI',
+          paymentAmount TEXT DEFAULT '250',
+          paymentStatus TEXT DEFAULT 'pending',
+          razorpayOrderId TEXT,
+          razorpayPaymentId TEXT,
+          razorpaySignature TEXT,
+          createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      database.run(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'customer',
+          email TEXT,
+          phone TEXT,
+          fullName TEXT,
+          createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-  db.serialize(() => {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS bookings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        bookingId TEXT UNIQUE,
-        name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        email TEXT,
-        serviceType TEXT NOT NULL,
-        date TEXT NOT NULL,
-        time TEXT NOT NULL,
-        city TEXT NOT NULL,
-        message TEXT,
-        paymentMethod TEXT DEFAULT 'UPI',
-        paymentAmount TEXT DEFAULT '250',
-        paymentStatus TEXT DEFAULT 'pending',
-        razorpayOrderId TEXT,
-        razorpayPaymentId TEXT,
-        razorpaySignature TEXT,
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+      database.all('PRAGMA table_info(users)', (userErr, userColumns) => {
+        if (userErr) console.error('Failed to inspect users table:', userErr.message);
+        const userExisting = new Set((userColumns || []).map(c => c.name));
+        const userTasks = [];
+        if (!userExisting.has('role')) userTasks.push('ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT "customer"');
+        if (!userExisting.has('email')) userTasks.push('ALTER TABLE users ADD COLUMN email TEXT');
+        if (!userExisting.has('phone')) userTasks.push('ALTER TABLE users ADD COLUMN phone TEXT');
+        if (!userExisting.has('fullName')) userTasks.push('ALTER TABLE users ADD COLUMN fullName TEXT');
 
-    db.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'customer',
-        email TEXT,
-        phone TEXT,
-        fullName TEXT,
-        createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+        const runUserTasks = (done) => {
+          const sql = userTasks.shift();
+          if (!sql) return done();
+          database.run(sql, (err) => {
+            if (err) console.error('User migration failed:', err.message);
+            runUserTasks(done);
+          });
+        };
 
-    db.all('PRAGMA table_info(users)', (err, columns) => {
-      if (!err && Array.isArray(columns)) {
-        const existing = columns.map((column) => column.name);
-        if (!existing.includes('role')) {
-          db.run('ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT "customer"');
-        }
-        if (!existing.includes('email')) {
-          db.run('ALTER TABLE users ADD COLUMN email TEXT');
-        }
-        if (!existing.includes('phone')) {
-          db.run('ALTER TABLE users ADD COLUMN phone TEXT');
-        }
-        if (!existing.includes('fullName')) {
-          db.run('ALTER TABLE users ADD COLUMN fullName TEXT');
-        }
-      }
-    });
+        runUserTasks(() => {
+          database.all('PRAGMA table_info(bookings)', (bookingErr, bookingColumns) => {
+            if (bookingErr) console.error('Failed to inspect bookings table:', bookingErr.message);
+            const bookingExisting = new Set((bookingColumns || []).map(c => c.name));
+            const bookingTasks = [];
+            if (!bookingExisting.has('bookingId')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN bookingId TEXT');
+            if (!bookingExisting.has('userId')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN userId INTEGER');
+            if (!bookingExisting.has('email')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN email TEXT');
+            if (!bookingExisting.has('paymentMethod')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN paymentMethod TEXT DEFAULT "UPI"');
+            if (!bookingExisting.has('paymentAmount')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN paymentAmount TEXT DEFAULT "250"');
+            if (!bookingExisting.has('paymentStatus')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN paymentStatus TEXT DEFAULT "pending"');
+            if (!bookingExisting.has('razorpayOrderId')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN razorpayOrderId TEXT');
+            if (!bookingExisting.has('razorpayPaymentId')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN razorpayPaymentId TEXT');
+            if (!bookingExisting.has('razorpaySignature')) bookingTasks.push('ALTER TABLE bookings ADD COLUMN razorpaySignature TEXT');
 
-    db.all('PRAGMA table_info(bookings)', (err, columns) => {
-      if (!err && Array.isArray(columns)) {
-        const existing = columns.map((column) => column.name);
-        if (!existing.includes('bookingId')) {
-          db.run('ALTER TABLE bookings ADD COLUMN bookingId TEXT UNIQUE');
-        }
-        if (!existing.includes('email')) {
-          db.run('ALTER TABLE bookings ADD COLUMN email TEXT');
-        }
-        if (!existing.includes('paymentMethod')) {
-          db.run('ALTER TABLE bookings ADD COLUMN paymentMethod TEXT DEFAULT "UPI"');
-        }
-        if (!existing.includes('paymentAmount')) {
-          db.run('ALTER TABLE bookings ADD COLUMN paymentAmount TEXT DEFAULT "250"');
-        }
-        if (!existing.includes('paymentStatus')) {
-          db.run('ALTER TABLE bookings ADD COLUMN paymentStatus TEXT DEFAULT "pending"');
-        }
-        if (!existing.includes('razorpayOrderId')) {
-          db.run('ALTER TABLE bookings ADD COLUMN razorpayOrderId TEXT');
-        }
-        if (!existing.includes('razorpayPaymentId')) {
-          db.run('ALTER TABLE bookings ADD COLUMN razorpayPaymentId TEXT');
-        }
-        if (!existing.includes('razorpaySignature')) {
-          db.run('ALTER TABLE bookings ADD COLUMN razorpaySignature TEXT');
-        }
-      }
+            const runBookingTasks = (done) => {
+              const sql = bookingTasks.shift();
+              if (!sql) return done();
+              database.run(sql, (err) => {
+                if (err) console.error('Booking migration failed:', err.message);
+                runBookingTasks(done);
+              });
+            };
+
+            runBookingTasks(() => {
+              database.run(`
+                UPDATE bookings
+                SET bookingId = 'SP-LEGACY-' || id
+                WHERE bookingId IS NULL
+                   OR TRIM(bookingId) = ''
+                   OR bookingId IN (
+                     SELECT bookingId FROM bookings
+                     WHERE bookingId IS NOT NULL AND TRIM(bookingId) <> ''
+                     GROUP BY bookingId HAVING COUNT(*) > 1
+                   )
+              `, (repairErr) => {
+                if (repairErr) console.error('Failed to repair booking IDs:', repairErr.message);
+                database.run(`
+                  UPDATE bookings
+                  SET userId = (
+                    SELECT users.id FROM users
+                    WHERE lower(trim(users.email)) = lower(trim(bookings.email))
+                      AND trim(users.phone) = trim(bookings.phone)
+                    LIMIT 1
+                  )
+                  WHERE userId IS NULL
+                    AND email IS NOT NULL AND trim(email) <> ''
+                    AND phone IS NOT NULL AND trim(phone) <> ''
+                    AND (
+                      SELECT COUNT(*) FROM users
+                      WHERE lower(trim(users.email)) = lower(trim(bookings.email))
+                        AND trim(users.phone) = trim(bookings.phone)
+                    ) = 1
+                `, (ownershipErr) => {
+                  if (ownershipErr) console.error('Failed to associate existing bookings:', ownershipErr.message);
+                  database.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_bookingId_unique ON bookings(bookingId)', (indexErr) => {
+                    if (indexErr) console.error('Failed to create bookingId unique index:', indexErr.message);
+                    resolve(database);
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
     });
   });
-
-  return db;
 }
 
-const db = initDatabase();
-ensureDefaultUser();
+let db;
+const dbReady = initializeDatabase().then((database) => {
+  db = database;
+  ensureDefaultUser();
+  return database;
+});
+
+app.use(async (req, res, next) => {
+  try { await dbReady; next(); } catch (error) { next(error); }
+});
 
 async function sendEmail(booking) {
   if (!isEmailConfigured) {
@@ -286,13 +339,8 @@ async function buildPaymentDetails(booking) {
 }
 
 async function sendWhatsApp(booking) {
-  if (!isWhatsAppConfigured) {
-    console.log('WhatsApp not configured. Skipping WhatsApp notification.');
-    return;
-  }
-
-  if (!hasValidWhatsAppTemplate()) {
-    console.log('WhatsApp notification skipped: TWILIO_WHATSAPP_TEMPLATE_SID is missing or still set to the placeholder value. Add an approved Twilio WhatsApp template SID to send messages.');
+  if (!isWhatsAppSenderConfigured) {
+    console.log('WhatsApp sender is not configured. Skipping WhatsApp notifications.');
     return;
   }
 
@@ -301,41 +349,73 @@ async function sendWhatsApp(booking) {
     process.env.TWILIO_AUTH_TOKEN
   );
 
-  const paymentMethod = booking.paymentMethod || 'UPI';
-  const paymentAmount = Number(booking.paymentAmount || 250);
-  const paymentDetails = buildPaymentDetails(booking);
+  const adminTemplateSid = process.env.TWILIO_WHATSAPP_TEMPLATE_SID;
+  if (ADMIN_WHATSAPP && isValidTwilioTemplateSid(adminTemplateSid)) {
+    try {
+      const adminMessage = [
+        'New Solar Booking',
+        `Name: ${booking.name}`,
+        `Phone: ${booking.phone}`,
+        `Service: ${booking.serviceType}`,
+        `Date: ${booking.date}`,
+        `Time: ${booking.time}`,
+        `City: ${booking.city}`,
+        `Details: ${booking.message || 'N/A'}`
+      ].join('\n');
 
-  const messageBody = [
-    '🔔 NEW SOLAR ENQUIRY',
-    '',
-    `Name: ${booking.name}`,
-    `Phone: ${booking.phone}`,
-    `Email: ${booking.email || 'N/A'}`,
-    `Service: ${booking.serviceType}`,
-    `Date: ${booking.date}`,
-    `Time: ${booking.time}`,
-    `City: ${booking.city}`,
-    `Payment Method: ${paymentMethod}`,
-    `Advance Payment: ₹${paymentAmount}`,
-    paymentDetails ? `Payment Details: ${paymentDetails}` : null,
-    `Details: ${booking.message || 'N/A'}`
-  ].filter(Boolean).join('\n');
+      await client.messages.create(createWhatsAppRequest({
+        to: ADMIN_WHATSAPP,
+        body: adminMessage,
+        templateSid: adminTemplateSid,
+        templateVars: {
+          1: String(booking.name || ''),
+          2: String(booking.serviceType || ''),
+          3: String(booking.phone || ''),
+          4: String(booking.date || ''),
+          5: String(booking.time || ''),
+          6: String(booking.message || 'N/A')
+        }
+      }));
+      console.log('Admin WhatsApp notification sent.');
+    } catch (error) {
+      console.error('Admin WhatsApp notification failed:', error.message);
+    }
+  } else {
+    console.log('Admin WhatsApp skipped: recipient or approved template is not configured.');
+  }
 
-  await client.messages.create({
-    from: process.env.TWILIO_WHATSAPP_FROM,
-    to: ADMIN_WHATSAPP,
-    contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-    contentVariables: JSON.stringify({
-      1: String(booking.name || ''),
-      2: String(booking.serviceType || ''),
-      3: String(booking.phone || ''),
-      4: String(booking.date || ''),
-      5: String(booking.time || ''),
-      6: String(booking.message || 'N/A')
-    })
-  });
+  const customerNumber = normalizeWhatsAppNumber(booking.phone);
+  const customerTemplateSid = process.env.TWILIO_WHATSAPP_CUSTOMER_TEMPLATE_SID;
+  if (!customerNumber || !isValidTwilioTemplateSid(customerTemplateSid)) {
+    console.log('Customer WhatsApp skipped: phone number or approved customer template is not configured.');
+    return;
+  }
 
-  console.log('WhatsApp message sent successfully.');
+  try {
+    const customerMessage = [
+      `Hello ${booking.name}, your solar booking has been received.`,
+      `Service: ${booking.serviceType}`,
+      `Date: ${booking.date}`,
+      `Time: ${booking.time}`,
+      `Location: ${booking.city}`,
+      `Booking ID: ${booking.bookingId}`
+    ].join('\n');
+
+    await client.messages.create(createWhatsAppRequest({
+      to: customerNumber,
+      body: customerMessage,
+      templateSid: customerTemplateSid,
+      templateVars: {
+        1: String(booking.name || ''),
+        2: String(booking.serviceType || ''),
+        3: String(booking.date || ''),
+        4: String(booking.time || '')
+      }
+    }));
+    console.log('Customer WhatsApp booking confirmation sent.');
+  } catch (error) {
+    console.error('Customer WhatsApp confirmation failed:', error.message);
+  }
 }
 
 app.get('/api/config/razorpay', (req, res) => {
@@ -412,6 +492,17 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'solar.html'));
 });
 
+function requireCustomerLogin(req, res, next) {
+  if (isCustomerBookingAllowed(req)) {
+    return next();
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: 'Please login to book a service.'
+  });
+}
+
 async function handleBookingSubmission(req, res) {
   console.log('BOOKING REQUEST RECEIVED:', req.body);
 
@@ -447,9 +538,10 @@ async function handleBookingSubmission(req, res) {
   }
 
   db.run(
-    `INSERT INTO bookings (bookingId, name, phone, email, serviceType, date, time, city, message, paymentMethod, paymentAmount, paymentStatus, razorpayOrderId, razorpayPaymentId, razorpaySignature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO bookings (bookingId, userId, name, phone, email, serviceType, date, time, city, message, paymentMethod, paymentAmount, paymentStatus, razorpayOrderId, razorpayPaymentId, razorpaySignature) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       booking.bookingId,
+      req.session.userId,
       booking.name,
       booking.phone,
       booking.email || null,
@@ -476,29 +568,30 @@ async function handleBookingSubmission(req, res) {
 
       try {
         await sendEmail(booking);
-        await sendWhatsApp(booking);
-
-        console.log('New booking request saved to database:', booking);
-        return res.status(200).json({
-          success: true,
-          message: 'Booking request received successfully. We will contact you shortly.',
-          bookingId: booking.bookingId
-        });
       } catch (notificationError) {
-        console.error('Notification sending failed:', notificationError);
-        return res.status(200).json({
-          success: true,
-          message: 'Booking request saved successfully. We will contact you shortly.'
-        });
+        console.error('Email notification failed, but booking was saved:', notificationError.message);
       }
+
+      try {
+        await sendWhatsApp(booking);
+      } catch (notificationError) {
+        console.error('WhatsApp notification failed, but booking was saved:', notificationError.message);
+      }
+
+      console.log('New booking request saved to database:', booking);
+      return res.status(200).json({
+        success: true,
+        message: 'Booking request received successfully. We will contact you shortly.',
+        bookingId: booking.bookingId
+      });
     }
   );
 }
 
-app.post('/api/booking', handleBookingSubmission);
-app.post('/api/book', handleBookingSubmission);
+app.post('/api/booking', requireCustomerLogin, handleBookingSubmission);
+app.post('/api/book', requireCustomerLogin, handleBookingSubmission);
 
-app.post('/book-appointment', async (req, res) => {
+app.post('/book-appointment', requireCustomerLogin, async (req, res) => {
   try {
     const { name, phone, service, date, time, details, paymentMethod, paymentAmount } = req.body || {};
     const normalizedPaymentMethod = String(paymentMethod || 'UPI').trim() || 'UPI';
@@ -616,10 +709,12 @@ function registerUser(req, res, role, redirectTo) {
           return res.status(500).json({ success: false, message: 'Unable to create account.' });
         }
 
-        req.session.isAuthenticated = true;
-        req.session.username = cleanUsername;
-        req.session.role = role;
-        req.session.userId = this.lastID;
+        req.session = {
+          isAuthenticated: true,
+          username: cleanUsername,
+          role,
+          userId: this.lastID
+        };
         return res.json({ success: true, redirectTo });
       }
     );
@@ -646,10 +741,12 @@ function loginUser(req, res, role, redirectTo) {
         return res.status(401).json({ success: false, message: 'Invalid username or password.' });
       }
 
-      req.session.isAuthenticated = true;
-      req.session.username = user.username;
-      req.session.role = user.role;
-      req.session.userId = user.id;
+      req.session = {
+        isAuthenticated: true,
+        username: user.username,
+        role: user.role,
+        userId: user.id
+      };
       return res.json({ success: true, redirectTo });
     }
   );
@@ -718,9 +815,8 @@ app.post('/api/login', (req, res) => {
 
 app.get('/logout', (req, res) => {
   const redirectPage = req.session && req.session.role === 'customer' ? '/customer/login' : '/admin/login';
-  req.session.destroy(() => {
-    res.redirect(redirectPage);
-  });
+  req.session = null;
+  res.redirect(redirectPage);
 });
 
 app.get('/api/session', (req, res) => {
@@ -767,6 +863,23 @@ app.get('/api/account', (req, res) => {
       }
     });
   });
+});
+
+app.get('/api/customer/bookings', (req, res) => {
+  if (!req.session || !req.session.isAuthenticated || req.session.role !== 'customer') {
+    return res.status(401).json({ success: false, message: 'Customer not logged in.' });
+  }
+
+  return db.all(
+    'SELECT bookingId, serviceType, date, time, city, message, paymentStatus, createdAt FROM bookings WHERE userId = ? ORDER BY id DESC',
+    [Number(req.session.userId || 0)],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ success: false, message: 'Unable to fetch your bookings.' });
+      }
+      return res.json({ success: true, data: rows });
+    }
+  );
 });
 
 app.put('/api/account', (req, res) => {
@@ -864,15 +977,14 @@ app.delete('/api/account', (req, res) => {
         return res.status(500).json({ success: false, message: 'Unable to delete account.' });
       }
 
-      req.session.destroy(() => {
-        return res.json({ success: true, message: 'Account deleted successfully.' });
-      });
+      req.session = null;
+      return res.json({ success: true, message: 'Account deleted successfully.' });
     });
   });
 });
 
 app.get('/api/bookings', (req, res) => {
-  if (!req.session || !req.session.isAuthenticated) {
+  if (!req.session || !req.session.isAuthenticated || req.session.role !== 'admin') {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
@@ -899,7 +1011,7 @@ app.delete('/api/bookings/:id', (req, res) => {
 });
 
 app.get('/api/users', (req, res) => {
-  if (!req.session || !req.session.isAuthenticated) {
+  if (!req.session || !req.session.isAuthenticated || req.session.role !== 'admin') {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
@@ -930,6 +1042,10 @@ app.get('/bookings', (req, res) => {
     return res.redirect('/admin/login');
   }
   res.sendFile(path.join(__dirname, 'bookings.html'));
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ success: true, status: 'ok' });
 });
 
 app.use((req, res) => {

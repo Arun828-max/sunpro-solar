@@ -40,6 +40,11 @@ const generateBookingId = (prefix = 'SP') => {
   return `${prefix}-${dateStamp}-${sequence}`;
 };
 
+const isCustomerBookingAllowed = (req = {}) => {
+  const session = req.session || {};
+  return !!(session.isAuthenticated && session.role === 'customer');
+};
+
 const resolveAdminWhatsAppNumber = () => {
   return (process.env.ADMIN_WHATSAPP || process.env.WHATSAPP_TO || '').trim();
 };
@@ -312,6 +317,7 @@ module.exports = {
   normalizeWhatsAppNumber,
   normalizeBookingPayload,
   generateBookingId,
+  isCustomerBookingAllowed,
   createWhatsAppRequest,
   isValidTwilioTemplateSid
 };

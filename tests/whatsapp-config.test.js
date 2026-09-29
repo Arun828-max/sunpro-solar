@@ -7,7 +7,8 @@ const {
   normalizeBookingPayload,
   createWhatsAppRequest,
   isValidTwilioTemplateSid,
-  generateBookingId
+  generateBookingId,
+  isCustomerBookingAllowed
 } = require('../controllers/bookingController');
 
 test('prefers ADMIN_WHATSAPP and falls back to WHATSAPP_TO', () => {
@@ -115,4 +116,10 @@ test('requires valid WhatsApp template IDs before sending a message', () => {
     if (previousAllowPlainBody === undefined) delete process.env.ALLOW_TWILIO_WHATSAPP_PLAIN_BODY;
     else process.env.ALLOW_TWILIO_WHATSAPP_PLAIN_BODY = previousAllowPlainBody;
   }
+});
+
+test('blocks booking requests unless a customer is logged in', () => {
+  assert.equal(isCustomerBookingAllowed({ session: {} }), false);
+  assert.equal(isCustomerBookingAllowed({ session: { isAuthenticated: true, role: 'admin' } }), false);
+  assert.equal(isCustomerBookingAllowed({ session: { isAuthenticated: true, role: 'customer' } }), true);
 });

@@ -211,7 +211,7 @@
 
     async function loadUsers() {
       try {
-        const response = await fetch('/api/users');
+        const response = await fetch('/api/users', { credentials: 'same-origin' });
         const result = await parseJsonResponse(response, 'Unable to load users right now.');
         const tbody = document.getElementById('usersBody');
         const loading = document.getElementById('usersLoading');
@@ -243,7 +243,7 @@
             if (!confirm('Delete this sign-up account?')) return;
 
             try {
-              const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+              const response = await fetch(`/api/users/${id}`, { method: 'DELETE', credentials: 'same-origin' });
               const data = await parseJsonResponse(response, 'Unable to delete account.');
               if (!response.ok || !data.success) throw new Error(data.message || 'Unable to delete account.');
               alert(data.message || 'Account deleted successfully.');
@@ -262,7 +262,7 @@
 
     async function loadBookings() {
       try {
-        const response = await fetch('/api/bookings');
+        const response = await fetch('/api/bookings', { credentials: 'same-origin' });
         const result = await parseJsonResponse(response, 'Unable to load bookings right now.');
 
         const tbody = document.getElementById('bookingsBody');
@@ -317,7 +317,7 @@
             if (!confirm('Delete this enquiry?')) return;
 
             try {
-              const response = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+              const response = await fetch(`/api/bookings/${id}`, { method: 'DELETE', credentials: 'same-origin' });
               const data = await parseJsonResponse(response, 'Unable to delete enquiry.');
               if (!response.ok || !data.success) throw new Error(data.message || 'Unable to delete enquiry.');
               alert(data.message || 'Enquiry deleted successfully.');
@@ -334,14 +334,27 @@
       }
     }
 
-    loadUsers();
-    loadBookings();
+    let dashboardRefreshInProgress = false;
+
+    async function refreshDashboard() {
+      if (document.hidden || dashboardRefreshInProgress) return;
+
+      dashboardRefreshInProgress = true;
+      try {
+        await Promise.all([loadUsers(), loadBookings()]);
+      } finally {
+        dashboardRefreshInProgress = false;
+      }
+    }
+
+    refreshDashboard();
     requestNotificationPermission();
 
-    setInterval(() => {
-      loadUsers();
-      loadBookings();
-    }, 5000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refreshDashboard();
+    });
+
+    setInterval(refreshDashboard, 5000);
   </script>
 </body>
 </html>

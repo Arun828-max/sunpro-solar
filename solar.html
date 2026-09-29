@@ -47,6 +47,18 @@
 </div>
 </section>
 
+<section id="customerBookings" class="customer-bookings" hidden>
+  <div class="container">
+    <div class="section-head bookings-heading">
+      <span class="eyebrow">YOUR ACTIVITY</span>
+      <h2>Your bookings</h2>
+      <p>Review the service requests you have sent to SunPro Solar.</p>
+    </div>
+    <div id="customerBookingsStatus" class="booking-list-status" role="status">Loading your bookings...</div>
+    <div id="customerBookingsList" class="booking-list"></div>
+  </div>
+</section>
+
 <section id="services">
 <div class="container">
  <div class="section-head"><span class="eyebrow">WHAT WE DO</span><h2>Complete solar care, from roof to routine maintenance.</h2><p>One team for installation, inspection, cleaning and ongoing support.</p></div>
@@ -139,12 +151,16 @@
    </div>
 
    <div class="form-grid">
-     <select id="serviceType" name="serviceType" required><option value="">Select a service</option><option value="installation">Solar panel installation</option><option value="cleaning">Solar panel cleaning</option><option value="maintenance">Inspection & maintenance</option><option value="package">Installation + cleaning package</option></select>
+     <input name="email" type="email" required placeholder="Email address">
      <input name="city" required placeholder="City / area">
    </div>
 
    <div class="form-grid">
+     <select id="serviceType" name="serviceType" required><option value="">Select a service</option><option value="installation">Solar panel installation</option><option value="cleaning">Solar panel cleaning</option><option value="maintenance">Inspection & maintenance</option><option value="package">Installation + cleaning package</option></select>
      <input name="date" required type="date" aria-label="Preferred date">
+   </div>
+
+   <div class="form-grid">
      <select name="time" required><option value="">Preferred time</option><option>8:00 AM – 10:00 AM</option><option>10:00 AM – 12:00 PM</option><option>12:00 PM – 3:00 PM</option><option>3:00 PM – 6:00 PM</option></select>
    </div>
 
@@ -157,13 +173,33 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-function openModal(e){if(e)e.preventDefault();document.getElementById('quoteModal').classList.add('show')}
+async function ensureCustomerLoginForBooking() {
+  try {
+    const response = await fetch('/api/session', { credentials: 'same-origin' });
+    const result = await response.json();
+    if (!result.success || !result.authenticated || result.user?.role !== 'customer') {
+      window.location.href = '/customer/login';
+      return false;
+    }
+    return true;
+  } catch (error) {
+    window.location.href = '/customer/login';
+    return false;
+  }
+}
+function openModal(e){
+  if(e)e.preventDefault();
+  ensureCustomerLoginForBooking().then((allowed) => {
+    if (allowed) {
+      document.getElementById('quoteModal').classList.add('show');
+    }
+  });
+}
 function openBooking(e,type){
   if(e)e.preventDefault();
   const modal=document.getElementById('quoteModal');
   const title=document.getElementById('modalTitle');
   const service=document.getElementById('serviceType');
-  modal.classList.add('show');
   if(type==='installation'){
     title.textContent='Book Solar Installation';
     service.value='installation';
@@ -174,6 +210,11 @@ function openBooking(e,type){
     title.textContent='Book a Solar Service';
     service.value='';
   }
+  ensureCustomerLoginForBooking().then((allowed) => {
+    if (allowed) {
+      modal.classList.add('show');
+    }
+  });
 }
 function closeModal(){document.getElementById('quoteModal').classList.remove('show')}
 function toggleMenu(){
@@ -182,7 +223,7 @@ function toggleMenu(){
  if(links.style.display==='flex'){links.style.position='absolute';links.style.top='74px';links.style.left='0';links.style.right='0';links.style.background='white';links.style.padding='18px 5%';links.style.flexDirection='column';links.style.alignItems='stretch';}
 }
 async function createRazorpayPayment(payload) {
-  const configResponse = await fetch('/api/config/razorpay');
+  const configResponse = await fetch('/api/config/razorpay', { credentials: 'same-origin' });
   const config = await configResponse.json();
 
   if (!config.success || !config.configured || !config.keyId) {
@@ -192,6 +233,7 @@ async function createRazorpayPayment(payload) {
   const orderResponse = await fetch('/api/create-payment-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify({
       amount: Number(payload.paymentAmount || 250),
       currency: 'INR',
@@ -223,6 +265,7 @@ async function createRazorpayPayment(payload) {
           const verifyResponse = await fetch('/api/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -257,11 +300,13 @@ async function createRazorpayPayment(payload) {
 }
 async function updateSessionUI() {
   try {
-    const response = await fetch('/api/session');
+    const response = await fetch('/api/session', { credentials: 'same-origin' });
     const result = await response.json();
     if (!result.success || !result.authenticated || result.user?.role !== 'customer') {
       return;
     }
+
+    document.getElementById('customerBookings').hidden = false;
 
     const navActions = document.getElementById('navActions');
     const heroQuickActions = document.getElementById('heroQuickActions');
@@ -280,8 +325,72 @@ async function updateSessionUI() {
         <a class="btn btn-outline" href="/logout">Logout</a>
       `;
     }
+
+    await loadCustomerBookings();
   } catch (error) {
     console.log('Session check failed', error);
+  }
+}
+
+async function loadCustomerBookings() {
+  const status = document.getElementById('customerBookingsStatus');
+  const list = document.getElementById('customerBookingsList');
+  status.textContent = 'Loading your bookings...';
+  list.replaceChildren();
+
+  try {
+    const response = await fetch('/api/customer/bookings', { credentials: 'same-origin' });
+    const result = await parseApiResponse(response);
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Unable to load your bookings.');
+    }
+
+    if (!Array.isArray(result.data) || result.data.length === 0) {
+      status.textContent = 'You have no bookings yet.';
+      return;
+    }
+
+    status.textContent = `${result.data.length} booking${result.data.length === 1 ? '' : 's'}`;
+    result.data.forEach((booking) => {
+      const article = document.createElement('article');
+      article.className = 'booking-record';
+
+      const heading = document.createElement('div');
+      heading.className = 'booking-record-heading';
+      const title = document.createElement('h3');
+      title.textContent = String(booking.serviceType || 'Solar service').replace(/\b\w/g, (letter) => letter.toUpperCase());
+      const id = document.createElement('span');
+      id.textContent = booking.bookingId || 'Booking received';
+      heading.append(title, id);
+
+      const details = document.createElement('dl');
+      details.className = 'booking-record-details';
+      [
+        ['Preferred date', booking.date],
+        ['Time', booking.time],
+        ['Location', booking.city],
+        ['Payment', booking.paymentStatus || 'Pending']
+      ].forEach(([label, value]) => {
+        const item = document.createElement('div');
+        const term = document.createElement('dt');
+        term.textContent = label;
+        const description = document.createElement('dd');
+        description.textContent = value || 'Not provided';
+        item.append(term, description);
+        details.append(item);
+      });
+
+      article.append(heading, details);
+      if (booking.message) {
+        const message = document.createElement('p');
+        message.className = 'booking-record-message';
+        message.textContent = booking.message;
+        article.append(message);
+      }
+      list.append(article);
+    });
+  } catch (error) {
+    status.textContent = error.message || 'Unable to load your bookings.';
   }
 }
 
@@ -314,8 +423,24 @@ async function parseApiResponse(response) {
 document.getElementById('quoteForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const form = e.currentTarget;
+  const canBook = await ensureCustomerLoginForBooking();
+  if (!canBook) {
+    return;
+  }
+
+  const form = e.currentTarget && e.currentTarget.tagName === 'FORM'
+    ? e.currentTarget
+    : document.getElementById('quoteForm');
+
   const notice = document.getElementById('notice');
+  if (!(form instanceof HTMLFormElement)) {
+    notice.style.display = 'block';
+    notice.style.background = '#fff3f2';
+    notice.style.color = '#8a2a2a';
+    notice.textContent = 'The booking form is unavailable. Please refresh the page and try again.';
+    return;
+  }
+
   const payload = Object.fromEntries(new FormData(form).entries());
   notice.style.display = 'block';
   notice.style.background = '#e8f7ef';
@@ -323,14 +448,20 @@ document.getElementById('quoteForm').addEventListener('submit', async (e) => {
   notice.textContent = 'Sending your booking request...';
 
   try {
-    let finalPayload = { ...payload, paymentMethod: 'Card', paymentAmount: 250, paymentStatus: 'pending' };
+    const finalPayload = {
+      ...payload,
+      email: String(payload.email || '').trim() || '',
+      paymentMethod: 'Card',
+      paymentAmount: 250,
+      paymentStatus: 'pending'
+    };
 
     const response = await fetch('/api/booking', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify(finalPayload)
     });
-
     const data = await parseApiResponse(response);
 
     if (!response.ok || data.success === false) {
@@ -339,6 +470,7 @@ document.getElementById('quoteForm').addEventListener('submit', async (e) => {
 
     notice.textContent = data.message || 'Booking request received! Our team will contact you soon.';
     form.reset();
+    await loadCustomerBookings();
     setTimeout(closeModal, 1600);
   } catch (error) {
     notice.style.background = '#fff3f2';
